@@ -1,0 +1,6 @@
+{
+  "name": "SmartHome – Automation & Monitoring",
+  "description": "A centralized web platform for home appliance control, room organization, automation schedules, energy analytics, security alerts, and device simulation.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

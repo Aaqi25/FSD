@@ -1,0 +1,152 @@
+import { Device, DeviceStatus, DeviceAttributes } from '../types';
+import { mockDevices } from '../data/devices';
+import { api } from './api';
+
+const STORAGE_KEY = 'smarthome_devices_state';
+
+// In-memory / persistent mock repository for interactive demonstration
+function loadLocalDevices(): Device[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      return JSON.parse(raw);
+    }
+  } catch (e) {
+    console.warn('Error reading local devices:', e);
+  }
+  return [...mockDevices];
+}
+
+function saveLocalDevices(devices: Device[]): void {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(devices));
+  } catch (e) {
+    console.warn('Error saving local devices:', e);
+  }
+}
+
+// Configurable failure injection for testing UI rollback as explicitly requested in Section 11 & 34:
+// "When user toggles a device: 1. update UI state, 2. show loading/processing state, 3. call service layer, 4. handle success, 5. handle failure, 6. revert UI if request fails"
+let simulateFailureOnce = false;
+
+export const deviceService = {
+  setSimulateFailureOnce(value: boolean) {
+    simulateFailureOnce = value;
+  },
+
+  async getAll(): Promise<Device[]> {
+    const hasBackend = !!import.meta.env.VITE_API_URL;
+    if (hasBackend) {
+      try {
+        const res = await api.get<Device[]>('/devices');
+        if (res.data) return res.data;
+      } catch (err) {
+        console.warn('Backend /devices failed, using local mock state:', err);
+      }
+    }
+    return loadLocalDevices();
+  },
+
+  async getById(deviceId: string): Promise<Device | null> {
+    const devices = await this.getAll();
+    return devices.find((d) => d._id === deviceId) || null;
+  },
+
+  async toggleStatus(deviceId: string, targetStatus: DeviceStatus): Promise<Device> {
+    // Artificial latency for realistic async feedback & loading indicator
+    await new Promise((resolve) => setTimeout(resolve, 350));
+
+    if (simulateFailureOnce) {
+      simulateFailureOnce = false;
+      throw new Error(`Device communication timeout: failed to toggle ${deviceId}`);
+    }
+
+    const hasBackend = !!import.meta.env.VITE_API_URL;
+    if (hasBackend) {
+      try {
+        const res = await api.patch<Device>(`/devices/${deviceId}/toggle`, { status: targetStatus });
+        if (res.data) return res.data;
+      } catch (err) {
+        console.warn('Backend toggle failed, applying to local mock state:', err);
+      }
+    }
+
+    const devices = loadLocalDevices();
+    const index = devices.findIndex((d) => d._id === deviceId);
+    if (index === -1) {
+      throw new Error(`Device not found: ${deviceId}`);
+    }
+
+    const updated: Device = {
+      ...devices[index],
+      status: targetStatus,
+      lastToggledAt: new Date().toISOString(),
+    };
+
+    devices[index] = updated;
+    saveLocalDevices(devices);
+    return updated;
+  },
+
+  async updateAttributes(deviceId: string, attributes: Partial<DeviceAttributes>): Promise<Device> {
+    await new Promise((resolve) => setTimeout(resolve, 200));
+
+    const devices = loadLocalDevices();
+    const index = devices.findIndex((d) => d._id === deviceId);
+    if (index === -1) throw new Error('Device not found');
+
+    const updated: Device = {
+      ...devices[index],
+      attributes: {
+        ...devices[index].attributes,
+        ...attributes,
+      },
+    };
+
+    devices[index] = updated;
+    saveLocalDevices(devices);
+    return updated;
+  },
+
+  async setOnlineStatus(deviceId: string, isOnline: boolean): Promise<Device> {
+    const devices = loadLocalDevices();
+    const index = devices.findIndex((d) => d._id === deviceId);
+    if (index === -1) throw new Error('Device not found');
+
+    const updated: Device = {
+      ...devices[index],
+      isOnline,
+      status: isOnline ? devices[index].status : 'inactive',
+    };
+
+    devices[index] = updated;
+    saveLocalDevices(devices);
+    return updated;
+  },
+
+  async create(deviceData: Omit<Device, '_id' | 'createdAt' | 'lastToggledAt'>): Promise<Device> {
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
+    const newDevice: Device = {
+      ...deviceData,
+      _id: 'dev_' + Date.now().toString(36),
+      lastToggledAt: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+    };
+
+    const devices = loadLocalDevices();
+    devices.unshift(newDevice);
+    saveLocalDevices(devices);
+    return newDevice;
+  },
+
+  async delete(deviceId: string): Promise<void> {
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    const devices = loadLocalDevices().filter((d) => d._id !== deviceId);
+    saveLocalDevices(devices);
+  },
+
+  resetMockState(): void {
+    localStorage.removeItem(STORAGE_KEY);
+  },
+};

@@ -1,0 +1,55 @@
+import { Room } from '../types';
+
+export const mockRooms: Room[] = [
+  {
+    _id: 'room_living',
+    homeId: 'home_001',
+    name: 'Living Room',
+    type: 'living_room',
+    floor: 1,
+    targetTemp: 22,
+    createdAt: '2025-01-16T09:00:00.000Z',
+  },
+  {
+    _id: 'room_bedroom',
+    homeId: 'home_001',
+    name: 'Master Bedroom',
+    type: 'bedroom',
+    floor: 2,
+    targetTemp: 20,
+    createdAt: '2025-01-16T09:05:00.000Z',
+  },
+  {
+    _id: 'room_kitchen',
+    homeId: 'home_001',
+    name: 'Kitchen',
+    type: 'kitchen',
+    floor: 1,
+    createdAt: '2025-01-16T09:10:00.000Z',
+  },
+  {
+    _id: 'room_hall',
+    homeId: 'home_001',
+    name: 'Main Hallway',
+    type: 'hall',
+    floor: 1,
+    createdAt: '2025-01-16T09:15:00.000Z',
+  },
+  {
+    _id: 'room_office',
+    homeId: 'home_001',
+    name: 'Home Office',
+    type: 'office',
+    floor: 2,
+    targetTemp: 21,
+    createdAt: '2025-01-16T09:20:00.000Z',
+  },
+  {
+    _id: 'room_bath',
+    homeId: 'home_001',
+    name: 'Guest Bathroom',
+    type: 'bathroom',
+    floor: 1,
+    createdAt: '2025-01-16T09:25:00.000Z',
+  },
+];
